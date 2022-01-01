@@ -74,10 +74,11 @@ with open('ben_yehuda_bad_urls.txt', 'a') as fbad:
                         os.remove(path)
                     raise
             page += 1
-        print(f'\nGot {i}/{total_count} files for period={period}')
+        print(f'Got {i}/{total_count} files for period={period}')
         if len(os.listdir(folder)) != total_count:
             print(f'Note: different number of {len(os.listdir(folder))} files found in folder')
+        print()
 if bad_urls:
-    print(f'\nFound {len(bad_urls)} bad URLs')
+    print(f'Found {len(bad_urls)} bad URLs')
     for url in bad_urls:
         print(url)
