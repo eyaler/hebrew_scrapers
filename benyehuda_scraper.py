@@ -19,6 +19,7 @@ if len(sys.argv) > 1:
     key = sys.argv[1]
 elif not key:
     print('Usage: python benyehuda_scraper.py API_KEY')
+    print('(get key from: https://benyehuda.org/api_keys/new)')
     sys.exit(1)
 periods = periods or ['modern', 'revival', 'enlightenment', 'medieval', 'ancient']
 bad_urls = []
