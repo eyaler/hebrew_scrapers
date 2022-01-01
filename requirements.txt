@@ -1,0 +1,5 @@
+bs4
+cchardet
+lxml
+requests
+git+https://github.com/JustAnotherArchivist/snscrape
