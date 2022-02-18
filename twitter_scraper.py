@@ -69,15 +69,16 @@ with open('tweets_%s.tsv' % args.lang, 'a+', encoding='utf8', newline='') as f:
                 if not latest:
                     latest = date
                 years[row[1][:4]] += 1
-                writer.writerow([tweet.id, date, tweet.user.username, tweet.inReplyToTweetId, tweet.quotedTweet.id if tweet.quotedTweet is not None else None, tweet.replyCount, tweet.retweetCount, tweet.quoteCount, tweet.likeCount, tweet.content.replace('\r\n', '\n').replace('\r', '\n')])
+                writer.writerow([tweet.id, date, tweet.user.username, tweet.inReplyToTweetId, tweet.quotedTweet.id if tweet.quotedTweet is not None else None, tweet.replyCount, tweet.retweetCount, tweet.quoteCount, tweet.likeCount, tweet.content.replace('\r\n', '\n').replace('\r', '\n').replace('\x00', '')])
                 f.flush()
                 os.fsync(f.fileno())
-                maxid_arg = ' max_id:%d' % (int(tweet.id)-1)
+                maxid_arg = ' max_id:%d' % (int(tweet.id) - 1)
                 i += 1
                 if i == args.limit or found + i == args.total:
                     break
                 if args.verbose and not i % args.verbose:
                     print('got %d tweets in %.2f hours (skipped: %d). earliest tweet: %s' % (i, (time.time()-start) / 3600, skip, date))
+            break
         except Exception as e:
             print(e)
 print('got %d tweets in %.2f hours (skipped: %d)' % (i, (time.time()-start) / 3600, skip))
