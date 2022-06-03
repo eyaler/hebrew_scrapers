@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 import os
 import re
 import requests
@@ -18,6 +18,7 @@ sleep_secs = 10
 retries = 3
 base_folder = 'd:/data/text/heb/benyehuda'
 
+
 if len(sys.argv) > 1:
     key = sys.argv[1]
 elif not key:
@@ -29,6 +30,9 @@ all_periods = ['modern', 'revival', 'enlightenment', 'medieval', 'ancient', 'no_
 periods = periods or all_periods
 bad_urls = []
 all_files = defaultdict(list)
+total_dl = 0
+total_files = 0
+bad_periods = Counter()
 with open('benyehuda_extra_files.txt', 'w') as fextra:
     for period in periods:
         folder = os.path.join(base_folder, file_format, period)
@@ -66,8 +70,10 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                 file = download_url.rsplit('/', 1)[-1]
                 item_period = item['metadata']['period']
                 if period == 'no_period':
-                    if item_period in periods:
+                    if item_period in all_periods and item_period != 'no_period':
                         continue
+                    if item_period:
+                        bad_periods[item_period] += 1
                 files.append(file)
                 path = os.path.join(folder, file)
                 if skip_exist and os.path.exists(path) and os.path.getsize(path):
@@ -94,17 +100,18 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                     have = False
                     for dup_period in all_periods:
                         dup_folder = os.path.join(base_folder, file_format, dup_period)
-                        for dup_file in os.listdir(dup_folder):
-                            if dup_file == file:
-                                dup_path = os.path.join(dup_folder, file)
-                                with open(dup_path, 'rb') as fdup:
-                                    dup_content = fdup.read()
-                                if dup_content == content:
-                                    if period == 'no_period':
-                                        have = True
-                                    else:
-                                        os.remove(dup_path)
-                                        print(f'Deleted identical file: {dup_path}')
+                        if os.path.exists(dup_folder):
+                            for dup_file in os.listdir(dup_folder):
+                                if dup_file == file:
+                                    dup_path = os.path.join(dup_folder, file)
+                                    with open(dup_path, 'rb') as fdup:
+                                        dup_content = fdup.read()
+                                    if dup_content == content:
+                                        if period == 'no_period':
+                                            have = True
+                                        else:
+                                            os.remove(dup_path)
+                                            print('Deleted identical file:', dup_path)
                     if not have:
                         with open(path, 'wb') as f:
                             f.write(content)
@@ -113,11 +120,13 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                         os.remove(path)
                     raise
             page += 1
-        print(f'Downloaded {cnt_dl}/{len(files)} files for period={period}')
         folder_files = os.listdir(folder)
+        print(f'Downloaded {cnt_dl}/{len(files)} giving {len(folder_files)} files for period={period}')
+        total_dl += cnt_dl
+        total_files += len(folder_files)
         extra_files = set(folder_files) - set(files)
         if extra_files:
-            line = f'Note: found {len(extra_files)} extra files in {folder}:' + ', '.join(extra_files)
+            line = f'Note: found {len(extra_files)} extra files in {folder}: ' + ', '.join(extra_files)
             fextra.write(line + '\n')
             print(line)
         for file in folder_files:
@@ -145,3 +154,8 @@ if bad_urls:
         for url in sorted(bad_urls):
             f.write(url + '\n')
             print(url)
+
+if bad_periods:
+    print('bad_periods:', bad_periods.most_common())
+
+print(f'Total: downloaded {total_dl} giving {total_files} files for {len(periods)} periods:', periods)
