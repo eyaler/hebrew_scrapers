@@ -19,6 +19,7 @@ timeout_secs = 60
 sleep_secs = 10
 retries = 3
 base_folder = 'c:/data/text/heb/benyehuda'
+delete_extra_files = False
 
 
 if sys.argv[1:]:
@@ -35,7 +36,6 @@ total_dl = 0
 total_files = 0
 bad_periods = Counter()
 all_periods_count = 0
-all_before_folder_files_count = 0
 with open('benyehuda_extra_files.txt', 'w') as fextra:
     for period in periods:
         folder = os.path.join(base_folder, file_format, period)
@@ -85,7 +85,7 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                 if skip_exist and os.path.exists(path) and os.path.getsize(path):
                     continue
                 cnt_new += 1
-                print(f'({total_dl + 1}) new={cnt_new}/{total_count - (all_before_folder_files_count if period == "no_period" else before_folder_files_count)} all={i}/{total_count}:', download_url)
+                print(f'({total_dl + 1}) new={cnt_new}/{max(0, total_count - before_folder_files_count)} all={i}/{total_count}:', download_url)
                 response = None
                 for j in range(retries):
                     try:
@@ -131,7 +131,6 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                     raise
             page += 1
         all_periods_count += total_count
-        all_before_folder_files_count += before_folder_files_count
         folder_files = os.listdir(folder)
         print(f'Downloaded {cnt_dl}/{len(files)} giving {len(folder_files)} files for period={period}')
         total_files += len(folder_files)
@@ -140,7 +139,23 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
             line = f'Note: found {len(extra_files)} extra files in {folder}: ' + ', '.join(extra_files)
             fextra.write(line + '\n')
             print(line)
-        print()
+            if delete_extra_files:
+                deleted = 0
+                for file in extra_files:
+                    try:
+                        os.remove(os.path.join(folder, file))
+                        deleted += 1
+                    except Exception:
+                        pass
+                if deleted:
+                    if deleted == len(extra_files):
+                        line = 'deleted all extra files'
+                    else:
+                        extra_files = sorted(set(folder_files) - set(files))
+                        line = f'{deleted} extra files deleted; {len(extra_files)} extra files remain: ' + ', '.join(extra_files)
+                    fextra.write(line + '\n')
+                    print(line)
+    print()
 
 all_files = defaultdict(list)
 for period in all_periods:
