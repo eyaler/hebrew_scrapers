@@ -16,8 +16,9 @@ skip_exist = True
 strip_copyright = True
 strip_footer = True
 timeout_secs = 60
-sleep_secs = 10
-retries = 3
+sleep_secs = 40
+throttle_secs = 0
+retries = 5
 base_folder = 'c:/data/text/heb/benyehuda'
 delete_extra_files = False
 
@@ -36,12 +37,13 @@ total_dl = 0
 total_files = 0
 bad_periods = Counter()
 all_periods_count = 0
+requests_session = requests.Session()
 with open('benyehuda_extra_files.txt', 'w') as fextra:
     for period in periods:
         folder = os.path.join(base_folder, file_format, period)
         os.makedirs(folder, exist_ok=True)
         i = 0
-        page = 1
+        search_after = []
         total_count = None
         files = []
         cnt_new = 0
@@ -49,10 +51,9 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
         before_folder_files_count = len(os.listdir(folder))
         while not total_count or i < total_count:
             try:
-                request_args = dict(file_format=file_format, page=page, periods=[period])
-                if period == 'no_period':
-                    del request_args['periods']
-                response = requests.post(api_url, json=dict(request_args, key=key), timeout=timeout_secs)
+                request_args = dict(file_format=file_format, search_after=search_after, periods=[] if period == 'no_period' else [period])
+                time.sleep(throttle_secs)
+                response = requests_session.post(api_url, json=dict(request_args, key=key), timeout=timeout_secs)
                 assert response, 'status_code=%d (%s)' % (response.status_code, requests.status_codes._codes.get(response.status_code, ['unofficial HTTP error'])[0])
             except Exception as e:
                 print(request_args, e)
@@ -68,7 +69,7 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
             elif total_count != json['total_count']:
                 total_count = None
                 i = 0
-                page = 1
+                search_after = []
                 continue
             for item in json['data']:
                 i += 1
@@ -87,12 +88,15 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                 cnt_new += 1
                 print(f'({total_dl + 1}) new={cnt_new}/{max(0, total_count - before_folder_files_count)} all={i}/{total_count}:', download_url)
                 response = None
+                time.sleep(throttle_secs)
                 for j in range(retries):
                     try:
-                        response = requests.get(download_url, timeout=timeout_secs)
+                        response = requests_session.get(download_url, timeout=timeout_secs)
                         assert response, 'status_code=%d (%s)' % (response.status_code, requests.status_codes._codes.get(response.status_code, ['unofficial HTTP error'])[0])
+                        break
                     except Exception as e:
                         print(f'try {j+1}/{retries}:', e)
+                        time.sleep(sleep_secs)
                 if not response:
                     bad_urls.append(download_url)
                     continue
@@ -129,7 +133,7 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                     if os.path.exists(path):
                         os.remove(path)
                     raise
-            page += 1
+            search_after = json['next_page_search_after']
         all_periods_count += total_count
         folder_files = os.listdir(folder)
         print(f'Downloaded {cnt_dl}/{len(files)} giving {len(folder_files)} files for period={period}')
