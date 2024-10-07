@@ -20,7 +20,7 @@ sleep_secs = 40
 throttle_secs = 0
 retries = 5
 base_folder = 'c:/data/text/heb/benyehuda'
-delete_extra_files = False
+delete_extra_files = True
 
 
 if sys.argv[1:]:
@@ -48,7 +48,6 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
         files = []
         cnt_new = 0
         cnt_dl = 0
-        before_folder_files_count = len(os.listdir(folder))
         while not total_count or i < total_count:
             try:
                 request_args = dict(file_format=file_format, search_after=search_after, periods=[] if period == 'no_period' else [period])
@@ -63,8 +62,8 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
             if total_count is None:
                 total_count = json['total_count']
                 effective_total_count = total_count - all_periods_count*(period == 'no_period')
-                folder_files = os.listdir(folder)
-                print(f"Fetching period={period} total_count={effective_total_count} to_download={max(0, effective_total_count - len(folder_files))}")
+                to_download = max(0, effective_total_count - len(os.listdir(folder)))
+                print(f"Fetching period={period} total_count={effective_total_count} to_download={to_download}")
                 files = []
             elif total_count != json['total_count']:
                 total_count = None
@@ -86,7 +85,7 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                 if skip_exist and os.path.exists(path) and os.path.getsize(path):
                     continue
                 cnt_new += 1
-                print(f'({total_dl + 1}) new={cnt_new}/{max(0, total_count - before_folder_files_count)} all={i}/{total_count}:', download_url)
+                print(f'({total_dl + 1}) new={cnt_new}/{max(cnt_new, to_download)} all={i}/{total_count}:', download_url)
                 response = None
                 time.sleep(throttle_secs)
                 for j in range(retries):
@@ -159,7 +158,7 @@ with open('benyehuda_extra_files.txt', 'w') as fextra:
                         line = f'{deleted} extra files deleted; {len(extra_files)} extra files remain: ' + ', '.join(extra_files)
                     fextra.write(line + '\n')
                     print(line)
-    print()
+        print()
 
 all_files = defaultdict(list)
 for period in all_periods:
