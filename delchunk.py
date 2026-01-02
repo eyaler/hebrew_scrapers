@@ -14,11 +14,11 @@ import sys
 
 
 if len(sys.argv) < 3:
-    print(__doc__)
+    print(__doc__, file=sys.stderr)
     sys.exit(1)
 dryrun = len(sys.argv) < 4
 if dryrun:
-    print('(DRYRUN)')
+    print('(DRYRUN)', file=sys.stderr)
 if not dryrun and sys.argv[1] != sys.argv[3]:
     shutil.copy(sys.argv[1], sys.argv[3])
 if os.path.isdir(sys.argv[2]):
@@ -41,15 +41,15 @@ with open(sys.argv[1 if dryrun else 3], 'rb' if dryrun else 'r+b') as big_file,\
                     break
                 i += 1
                 end = start + chunk_len
-                print('Deleting chunk %s (%d) at %d:%d%s' % (chunk, i, start, end, ' (cont.)' if end == prev_start else ''))
+                print(f'Deleting chunk {chunk} ({i}) at {start}:{end}{" (cont.)" * (end == prev_start)}', file=sys.stderr)
                 big_map.move(start, end, big_len - end)
                 prev_start = start
                 big_len -= chunk_len
                 if not dryrun:
                     big_map.resize(big_len)
             if not i:
-                print('Chunk %s not found' % chunk)
+                print(f'Chunk {chunk} not found', file=sys.stderr)
             elif not dryrun:
                 big_map.flush()
 if dryrun:
-    print('(DRYRUN)')
+    print('(DRYRUN)', file=sys.stderr)
